@@ -10,7 +10,8 @@ Two reasons this talks to XRT directly rather than calling the IRON design:
 
 Build the artifacts first, in the IRON environment:
 
-    call c:\dev\mlir-aie\iron_env.cmd
+                r"    call c:\dev\mlir-aie\iron_env.cmd" "
+"
     python tools\export_design.py
 """
 
@@ -53,6 +54,13 @@ class NpuDesign:
 
         self.pyxrt = pyxrt
         d = ARTIFACTS / name
+        if not (d / "final.xclbin").exists():
+            raise SystemExit(
+                f"no built design at {d}. Build it first, in the IRON "
+                "environment:\n"
+                r"    call c:\dev\mlir-aie\iron_env.cmd" "\n"
+                r"    python tools\export_design.py"
+            )
         self.meta = json.loads((d / "design.json").read_text())
         self.device = device or pyxrt.device(0)
 

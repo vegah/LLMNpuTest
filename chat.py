@@ -69,7 +69,7 @@ def main(argv: list[str]) -> int:
         )
 
         if head is not None:
-            head.design.seconds = head.design.calls = 0
+            head.design.seconds = head.design.calls = head.npu_calls = 0
         t = time.time()
         with torch.no_grad():
             out = model.generate(
