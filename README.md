@@ -5,6 +5,16 @@ as opaque binaries? Yes. This repo does it, end to end: it reads FastFlowLM's
 undocumented `q4nx` weight format, runs the model's largest projection on the NPU
 with a kernel built from source, and chats.
 
+**The model is
+[`FastFlowLM/Qwen3.5-0.8B-NPU2`](https://huggingface.co/FastFlowLM/Qwen3.5-0.8B-NPU2)**
+— FastFlowLM's XDNA2 build of Qwen3.5-0.8B, distributed as a single 1.1 GB `.q4nx`
+file. 24 layers, hidden 1024, vocab 248320, and a hybrid token mixer: 18 layers of
+Gated DeltaNet (linear attention) and 6 of gated full attention, in the repeating
+pattern `3 x DeltaNet -> 1 x attention`. Weights are 4-bit for the projections and
+8-bit for `lm_head`; the embedding table stays bf16 and is 46% of the file. Ground
+truth for everything below is [`Qwen/Qwen3.5-0.8B`](https://huggingface.co/Qwen/Qwen3.5-0.8B),
+the checkpoint FastFlowLM quantised.
+
 ```
 npu      lm_head on the array, 248320 x 1024, 270 MB, 8 cores
 > Explain how a neural processing unit differs from a GPU.
