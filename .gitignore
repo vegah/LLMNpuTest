@@ -50,3 +50,32 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# ---------------------------------------------------------------------------
+# This project
+# ---------------------------------------------------------------------------
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Model weights are never redistributed. They are fetched to
+# ~/.cache/openfflm/ (see README), and single tiles are range-fetched into
+# fixtures/ by tools/fetch_q4nx.py.
+designs/q4nx_unpack/fixtures/
+
+# Build outputs of tools/export_design.py: final.xclbin, insts.bin, design.json.
+# Reproduced from source in the IRON environment, so not tracked -- and an
+# xclbin is only valid for the toolchain that built it.
+artifacts/
+
+# IRON's JIT cache lives in ~/.npu/cache and is never inside the repo, but
+# aiecc leaves these beside a design if it is invoked by hand.
+*.xclbin
+insts.bin
+aie.mlir
+input_with_addresses.mlir
+input_physical.mlir
+*.ld.script
+trace*.json
