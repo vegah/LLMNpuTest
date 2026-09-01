@@ -1,0 +1,15 @@
+// OpenFFLM -- MLP GEMV group 1, 2 K-tiles, writing at a row offset.
+// One entry point per translation unit (IRON compiles the source once per
+// ExternalFunction, so two here would each define both symbols).
+// SPDX-License-Identifier: Apache-2.0
+#define GRANITE_TILES_PER_CALL 2
+#define GRANITE_BATCH 1
+#define GRANITE_K 2560
+#include "granite_gemv.h"
+
+extern "C" {
+void granite_mlp_g1(const uint8_t *__restrict t, const bfloat16 *__restrict x,
+                     float *__restrict y, unsigned row) {
+  gemv_q4_group(t, x, 1, y + row * kRows);
+}
+}
