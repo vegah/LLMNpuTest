@@ -170,6 +170,23 @@ granite_attn_block_impl(const bfloat16 *__restrict q,
     aie::store_v(state + v * kHDV, acc[v].template to_vector<float>());
   state[kHD] = m_new;
   state[kHD + 1] = l_new;
+#ifdef GRANITE_ATTN_DEBUG_SCORES
+  // Overwrite the accumulator with the raw scores so they can be compared
+  // element by element against numpy. Which scores are wrong, and by how much,
+  // is a fact; which stage is at fault has so far only been a guess.
+  for (unsigned t = 0; t < kBlk; ++t) state[t] = s[t];
+  // and what the kernel actually received for q and K[0] -- which is what
+  // distinguishes 'the maths is wrong' from 'the data never arrived'.
+  // Via vector loads: scalar bf16 reads at a computed offset make the Peano
+  // backend fail with "immediate operand value -120 is not a multiple of 64".
+  // q only: state is kHD+2 floats, and writing K at state+kBlk+kHDV ran off
+  // the end of the buffer. K was already confirmed to arrive correctly.
+  {
+    aie::accum<accfloat, kHDV> tq;
+    tq.from_vector(aie::load_v<kHDV>(q));
+    aie::store_v(state + kBlk, tq.template to_vector<float>());
+  }
+#endif
   event1();
 }
 
