@@ -1,4 +1,4 @@
-// OpenFFLM -- MLP GEMV group 3, 2 K-tiles, writing at a row offset.
+// OpenFFLM -- MLP GEMV group 12, 2 K-tiles, writing at a row offset.
 // One entry point per translation unit.
 // SPDX-License-Identifier: Apache-2.0
 #define GRANITE_TILES_PER_CALL 2
@@ -7,8 +7,8 @@
 #include "granite_gemv.h"
 
 extern "C" {
-void granite_mlp_g3(const uint8_t *__restrict t, const bfloat16 *__restrict x,
+void granite_mlp_g12(const uint8_t *__restrict t, const bfloat16 *__restrict x,
                      float *__restrict y, unsigned row) {
-  gemv_q4_group(t, x, 3, y + row * kRows);
+  gemv_q4_group(t, x, 12, y + row * kRows);
 }
 }
