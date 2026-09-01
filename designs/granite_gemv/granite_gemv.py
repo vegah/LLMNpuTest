@@ -110,11 +110,12 @@ NULL_SRC = """// OpenFFLM -- DMA probe, group {i} (batch {batch}). GENERATED.
 
 extern "C" {{
 void granite_gemv_p{per_call}b{batch}_k{i}(const uint8_t *__restrict t,
-                                   const bfloat16 *__restrict x,
                                    float *__restrict y) {{
-  // One byte from each input so the loads are not elided; the DMA has
-  // already moved the full object by the time this runs.
-  y[0] += (float)t[0] + (float)x[0];
+  // One byte, so the load is not elided; the DMA has already moved the
+  // whole object by the time this runs. No activation argument: without an
+  // x stream the design spends all 16 shim MM2S channels on weights, which
+  // is what lets it reach 16 cores where the GEMV caps at 8.
+  y[0] += (float)t[0];
 }}
 }}
 """
@@ -198,7 +199,7 @@ def granite_gemv(w: In, x: In, y: Out, *, tile_rows: CompileTime[int],
         ExternalFunction(
             f"granite_gemv_p{per_call}b1_k{i}",
             source_file=str(srcs[i]),
-            arg_types=[tile_ty, x_ty, acc_ty],
+            arg_types=([tile_ty, acc_ty] if null else [tile_ty, x_ty, acc_ty]),
             include_dirs=_include_dirs(),
         )
         for i in range(n_entry)
@@ -212,15 +213,19 @@ def granite_gemv(w: In, x: In, y: Out, *, tile_rows: CompileTime[int],
 
     def core_body(win, xin, yout, *ks):
         # x is acquired once and held: the same activation feeds every tile-row.
-        xe = xin.acquire(1)
+        xe = None if null else xin.acquire(1)
         for _ in range_(per_core):
             ye = yout.acquire(1)
             for fn in ks:
                 we = win.acquire(1)
-                fn(we, xe, ye)
+                if null:
+                    fn(we, ye)
+                else:
+                    fn(we, xe, ye)
                 win.release(1)
             yout.release(1)
-        xin.release(1)
+        if not null:
+            xin.release(1)
 
     workers = [
         Worker(core_body,

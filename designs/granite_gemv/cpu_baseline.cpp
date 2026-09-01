@@ -14,7 +14,7 @@
 // Weights are read from the user's installed model; nothing is redistributed.
 //
 //   cl /O2 /arch:AVX2 /std:c++17 /EHsc cpu_baseline.cpp
-//   cpu_baseline.exe <model.q4nx> <byte_offset> <n_tile_rows> <k_tiles> [threads]
+//   cpu_baseline.exe <model.q4nx> <byte_offset> <n_tile_rows> <k_tiles> [threads] [iters]
 
 #include <immintrin.h>
 
@@ -120,6 +120,10 @@ int main(int argc, char **argv) {
   const int k_tiles = atoi(argv[4]);
   const int nthreads = argc > 5 ? atoi(argv[5])
                                 : (int)std::thread::hardware_concurrency();
+  // Iteration count is a parameter so this can be held busy for the whole of a
+  // concurrent NPU run -- the hybrid measurement needs both sides loaded at the
+  // same time, not one after the other.
+  const int iters = argc > 6 ? atoi(argv[6]) : 3;
   const long long row_bytes = (long long)k_tiles * kTileBytes;
   const long long total = (long long)tile_rows * row_bytes;
   const int K = k_tiles * kTileK;
@@ -151,7 +155,7 @@ int main(int argc, char **argv) {
   // 1. STREAM: the memory-bandwidth floor. Reads every weight byte and does
   //    almost nothing with them, so it bounds any CPU GEMV from below.
   std::atomic<uint64_t> sink{0};
-  double ms_stream = timed(3, [&] {
+  double ms_stream = timed(iters, [&] {
     parallel([&](int r) {
       const uint8_t *p = w.data() + (size_t)r * row_bytes;
       __m256i s = _mm256_setzero_si256();
@@ -162,7 +166,7 @@ int main(int argc, char **argv) {
   });
 
   // 2. GEMV: the real thing.
-  double ms_gemv = timed(3, [&] {
+  double ms_gemv = timed(iters, [&] {
     parallel([&](int r) {
       gemv_tile_row(w.data() + (size_t)r * row_bytes, x.data(), k_tiles,
                     y.data() + (size_t)r * kRows);
